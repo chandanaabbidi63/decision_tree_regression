@@ -3,81 +3,32 @@
 # ---------------------------------------------------
 
 import streamlit as st
-import pandas as pd
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from sklearn.datasets import load_breast_cancer
+from sklearn.datasets import load_diabetes
 from sklearn.model_selection import train_test_split
-from sklearn.svm import SVC
-from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import (
-    accuracy_score,
-    classification_report,
-    confusion_matrix
-)
+from sklearn.tree import DecisionTreeRegressor, plot_tree
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
 # ---------------------------------------------------
-# PAGE CONFIGURATION
+# PAGE CONFIG
 # ---------------------------------------------------
 
 st.set_page_config(
-    page_title="Breast Cancer Prediction - SVC",
-    page_icon="🩺",
+    page_title="Diabetes Prediction - Decision Tree Regression",
+    page_icon="🧠",
     layout="wide"
 )
-
-# ---------------------------------------------------
-# CUSTOM CSS
-# ---------------------------------------------------
-
-st.markdown("""
-<style>
-
-.main {
-    background-color: #f5f7fa;
-}
-
-.title {
-    font-size: 42px;
-    font-weight: bold;
-    color: #0e4c92;
-    text-align: center;
-}
-
-.subtitle {
-    font-size: 18px;
-    text-align: center;
-    color: gray;
-}
-
-.stButton>button {
-    background-color: #0e4c92;
-    color: white;
-    border-radius: 10px;
-    height: 50px;
-    width: 100%;
-    font-size: 18px;
-    font-weight: bold;
-}
-
-</style>
-""", unsafe_allow_html=True)
 
 # ---------------------------------------------------
 # TITLE
 # ---------------------------------------------------
 
-st.markdown(
-    '<p class="title">🩺 Breast Cancer Prediction System</p>',
-    unsafe_allow_html=True
-)
-
-st.markdown(
-    '<p class="subtitle">Support Vector Classification (SVC) using Machine Learning</p>',
-    unsafe_allow_html=True
-)
+st.title("🧠 Diabetes Prediction using Decision Tree Regression")
+st.markdown("Built with Streamlit + Scikit-learn")
 
 st.markdown("---")
 
@@ -85,47 +36,41 @@ st.markdown("---")
 # LOAD DATASET
 # ---------------------------------------------------
 
-cancer = load_breast_cancer()
+diabetes = load_diabetes()
 
-X = pd.DataFrame(
-    cancer.data,
-    columns=cancer.feature_names
-)
+X = pd.DataFrame(diabetes.data, columns=diabetes.feature_names)
+y = pd.Series(diabetes.target)
 
-y = pd.Series(cancer.target)
+df = X.copy()
+df["target"] = y
 
 # ---------------------------------------------------
-# DATASET OVERVIEW
+# DATA OVERVIEW
 # ---------------------------------------------------
 
-st.header("📂 Dataset Overview")
+st.header("📊 Dataset Overview")
 
 col1, col2 = st.columns(2)
 
 with col1:
-    st.subheader("Features Dataset")
+    st.write("### Features")
     st.dataframe(X.head())
 
 with col2:
-    st.subheader("Target Dataset")
+    st.write("### Target")
     st.dataframe(y.head())
 
-st.write("### Dataset Shape")
-st.write("Features Shape:", X.shape)
-st.write("Target Shape:", y.shape)
+st.write("Shape:", df.shape)
 
 # ---------------------------------------------------
-# DATA VISUALIZATION
+# VISUALIZATION
 # ---------------------------------------------------
 
-st.header("📊 Data Visualization")
+st.header("📉 Data Visualization")
 
-fig1, ax1 = plt.subplots(figsize=(15, 6))
-
-sns.boxplot(data=X.iloc[:, :10], ax=ax1)
-
-plt.xticks(rotation=90)
-
+fig1, ax1 = plt.subplots(figsize=(10, 4))
+sns.boxplot(data=X.iloc[:, :5], ax=ax1)
+plt.xticks(rotation=45)
 st.pyplot(fig1)
 
 # ---------------------------------------------------
@@ -133,207 +78,102 @@ st.pyplot(fig1)
 # ---------------------------------------------------
 
 X_train, X_test, y_train, y_test = train_test_split(
-    X,
-    y,
+    X, y,
     test_size=0.2,
     random_state=42
 )
 
 # ---------------------------------------------------
-# FEATURE SCALING (Important for SVC)
+# MODEL TRAINING
 # ---------------------------------------------------
 
-scaler = StandardScaler()
-
-X_train_scaled = scaler.fit_transform(X_train)
-X_test_scaled = scaler.transform(X_test)
+model = DecisionTreeRegressor(max_depth=4, random_state=42)
+model.fit(X_train, y_train)
 
 # ---------------------------------------------------
-# MODEL CREATION - SVC
+# PREDICTIONS
 # ---------------------------------------------------
 
-st.header("🤖 Support Vector Classifier (SVC) Model")
+y_pred = model.predict(X_test)
 
-st.info("ℹ️ **Note:** Feature scaling (StandardScaler) is applied before training SVC for better performance.")
-
-model = SVC(
-    kernel='rbf',
-    C=1.0,
-    gamma='scale',
-    probability=True,
-    random_state=42
-)
-
-# Train Model
-model.fit(X_train_scaled, y_train)
+mae = mean_absolute_error(y_test, y_pred)
+mse = mean_squared_error(y_test, y_pred)
+rmse = np.sqrt(mse)
+r2 = r2_score(y_test, y_pred)
 
 # ---------------------------------------------------
-# MODEL PREDICTIONS
-# ---------------------------------------------------
-
-y_pred = model.predict(X_test_scaled)
-
-# Accuracy
-accuracy = accuracy_score(y_test, y_pred)
-
-# ---------------------------------------------------
-# MODEL PERFORMANCE
+# METRICS
 # ---------------------------------------------------
 
 st.header("📈 Model Performance")
 
-col1, col2, col3 = st.columns(3)
+col1, col2, col3, col4 = st.columns(4)
 
-with col1:
-    st.metric("Accuracy", f"{accuracy:.2f}")
-
-with col2:
-    st.metric("Training Samples", len(X_train))
-
-with col3:
-    st.metric("Testing Samples", len(X_test))
+col1.metric("MAE", f"{mae:.2f}")
+col2.metric("MSE", f"{mse:.2f}")
+col3.metric("RMSE", f"{rmse:.2f}")
+col4.metric("R² Score", f"{r2:.2f}")
 
 # ---------------------------------------------------
-# CONFUSION MATRIX
+# ACTUAL VS PREDICTED
 # ---------------------------------------------------
 
-st.subheader("Confusion Matrix")
+st.subheader("📊 Actual vs Predicted")
 
-cm = confusion_matrix(y_test, y_pred)
-
-fig2, ax2 = plt.subplots(figsize=(6, 4))
-
-sns.heatmap(
-    cm,
-    annot=True,
-    fmt='d',
-    cmap='Blues',
-    xticklabels=cancer.target_names,
-    yticklabels=cancer.target_names,
-    ax=ax2
-)
-
-plt.xlabel("Predicted")
-plt.ylabel("Actual")
-
+fig2, ax2 = plt.subplots()
+ax2.scatter(y_test, y_pred)
+ax2.set_xlabel("Actual")
+ax2.set_ylabel("Predicted")
 st.pyplot(fig2)
 
 # ---------------------------------------------------
-# CLASSIFICATION REPORT
+# DECISION TREE VISUALIZATION
 # ---------------------------------------------------
 
-st.subheader("Classification Report")
+st.header("🌳 Decision Tree Structure")
 
-report = classification_report(
-    y_test,
-    y_pred,
-    target_names=cancer.target_names,
-    output_dict=True
+fig3, ax3 = plt.subplots(figsize=(18, 8))
+
+plot_tree(
+    model,
+    feature_names=diabetes.feature_names,
+    filled=True,
+    fontsize=7,
+    ax=ax3
 )
 
-report_df = pd.DataFrame(report).transpose()
-
-st.dataframe(report_df)
+st.pyplot(fig3)
 
 # ---------------------------------------------------
-# SVC MODEL DETAILS
+# USER INPUT PREDICTION
 # ---------------------------------------------------
 
-st.subheader("ℹ️ SVC Model Details")
+st.header("🔮 Predict Diabetes Progression")
 
-model_details = pd.DataFrame({
-    "Parameter": ["Kernel", "C (Regularization)", "Gamma", "Probability"],
-    "Value": ["RBF (Radial Basis Function)", "1.0", "scale", "True"]
-})
-
-st.dataframe(model_details)
-
-# ---------------------------------------------------
-# USER INPUT SECTION
-# ---------------------------------------------------
-
-st.header("🔍 Predict Breast Cancer")
-
-st.write("Enter the feature values below:")
+st.write("Enter feature values:")
 
 input_data = []
 
-col1, col2 = st.columns(2)
+cols = st.columns(5)
 
-for i, feature in enumerate(cancer.feature_names):
-
-    mean_value = float(X[feature].mean())
-
-    if i % 2 == 0:
-
-        with col1:
-
-            value = st.number_input(
-                feature,
-                value=mean_value,
-                format="%.4f"
-            )
-
-    else:
-
-        with col2:
-
-            value = st.number_input(
-                feature,
-                value=mean_value,
-                format="%.4f"
-            )
-
+for i, feature in enumerate(diabetes.feature_names):
+    value = cols[i % 5].number_input(
+        feature,
+        value=float(X[feature].mean())
+    )
     input_data.append(value)
 
-# ---------------------------------------------------
-# PREDICTION BUTTON
-# ---------------------------------------------------
-
-if st.button("Predict Cancer Type"):
+if st.button("Predict"):
 
     input_array = np.array(input_data).reshape(1, -1)
 
-    # Scale the input using the same scaler used during training
-    input_array_scaled = scaler.transform(input_array)
+    prediction = model.predict(input_array)
 
-    prediction = model.predict(input_array_scaled)
-
-    probability = model.predict_proba(input_array_scaled)
-
-    st.subheader("Prediction Result")
-
-    if prediction[0] == 0:
-
-        st.error("⚠️ Malignant Cancer Detected")
-
-    else:
-
-        st.success("✅ Benign Cancer Detected")
-
-    # Probability Table
-    st.write("### Prediction Probability")
-
-    prob_df = pd.DataFrame({
-        "Class": ["Malignant", "Benign"],
-        "Probability": probability[0]
-    })
-
-    st.dataframe(prob_df)
+    st.success(f"Predicted Disease Progression: {prediction[0]:.2f}")
 
 # ---------------------------------------------------
 # FOOTER
 # ---------------------------------------------------
 
 st.markdown("---")
-
-st.markdown(
-    """
-    <center>
-        <h4>
-            Developed using Streamlit & Scikit-Learn | SVC Model
-        </h4>
-    </center>
-    """,
-    unsafe_allow_html=True
-)
+st.markdown("### 🚀 Built with Streamlit + Scikit-learn")
