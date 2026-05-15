@@ -32,8 +32,7 @@ class IQROutlierRemover(BaseEstimator, TransformerMixin):
 
     def transform(self, X):
     
-        # During prediction we must preserve row count (Streamlit uses 1 row).
-        # We only use outlier thresholds as a training-time regularization step.
+        # We use outlier thresholds only during training-time fit.
         X_df = self._to_dataframe(X)
         return X_df.to_numpy()
 
